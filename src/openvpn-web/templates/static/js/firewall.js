@@ -385,7 +385,7 @@ function openFirewallModal(m, data) {
     });
 
     request.get('/settings').then((data) => {
-      if (data.system.ldap.ldap_auth) {
+      if (data.system.ldap.ldap_auth || data.system.azure?.azure_auth) {
         $('.firewall-tree[data-name="sug"]').addClass('disabled');
       } else {
         $('.firewall-tree[data-name="sug"]').removeClass('disabled');

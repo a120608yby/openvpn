@@ -352,6 +352,10 @@
 
     $('#modifyPass').click(function () {
       request.get('/client/userinfo').then((data) => {
+        if (data.azureAuth) {
+          message.error('Azure用户不支持修改密码');
+          return;
+        }
         if (data.ldapAuth) {
           message.error('LDAP用户不支持修改密码');
           return;

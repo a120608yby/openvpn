@@ -20,6 +20,16 @@ $(document).on('click', '#settings', function () {
     $('#ldapUserGroupFilter').prop('checked', data.system.ldap.ldap_user_group_filter);
     $('#ldapUserGroupDn').val(data.system.ldap.ldap_user_group_dn);
 
+    $('#azureAuth').prop('checked', data.system.azure?.azure_auth);
+    $('#azureTenantId').val(data.system.azure?.tenant_id);
+    $('#azureClientId').val(data.system.azure?.client_id);
+    $('#azureClientSecret').val(data.system.azure?.client_secret);
+    $('#azureUserAttribute').val(data.system.azure?.user_attribute);
+    $('#azureGroupFilter').prop('checked', data.system.azure?.group_filter);
+    $('#azureGroupId').val(data.system.azure?.group_id);
+    $('#azureAttrIpaddr').val(data.system.azure?.attr_ipaddr);
+    $('#azureAttrConfig').val(data.system.azure?.attr_config);
+
     $('#emailSendSubjectPrefix').val(data.system.email?.send_subject_prefix);
     $('#emailSendFrom').val(data.system.email?.send_from);
     $('#emailSmtpHost').val(data.system.email?.host);
@@ -218,9 +228,76 @@ $(document).on('change', '#validateClientConfig', function () {
 
 // ldap
 $(document).on('change', '#ldapAuth', function () {
-  request.post('/settings', { 'system.ldap.ldap_auth': $(this).prop('checked') }).then((data) => {
-    message.success(data.message);
+  const box = $(this);
+  const enabled = box.prop('checked');
+  request
+    .post('/settings', { 'system.ldap.ldap_auth': enabled })
+    .then((data) => {
+      if (enabled) {
+        $('#azureAuth').prop('checked', false);
+      }
+      message.success(data.message);
+    })
+    .catch(() => {
+      box.prop('checked', !enabled);
+    });
+});
+
+$(document).on('change', '#azureAuth', function () {
+  const box = $(this);
+  const enabled = box.prop('checked');
+  request
+    .post('/settings', { 'system.azure.azure_auth': enabled })
+    .then((data) => {
+      if (enabled) {
+        $('#ldapAuth').prop('checked', false);
+      }
+      message.success(data.message);
+    })
+    .catch(() => {
+      box.prop('checked', !enabled);
+    });
+});
+
+function bindAzureText(selector, key) {
+  $(document).on('focus', selector, function () {
+    $(this).data('oldValue', $(this).val());
   });
+  $(document).on('blur', selector, function () {
+    const oldValue = $(this).data('oldValue');
+    const newValue = $(this).val();
+    if (oldValue === newValue) return;
+    const el = $(this);
+    request
+      .post('/settings', { [key]: newValue })
+      .then((data) => {
+        message.success(data.message);
+      })
+      .catch(() => {
+        el.val(oldValue);
+      });
+  });
+}
+
+bindAzureText('#azureTenantId', 'system.azure.tenant_id');
+bindAzureText('#azureClientId', 'system.azure.client_id');
+bindAzureText('#azureClientSecret', 'system.azure.client_secret');
+bindAzureText('#azureUserAttribute', 'system.azure.user_attribute');
+bindAzureText('#azureGroupId', 'system.azure.group_id');
+bindAzureText('#azureAttrIpaddr', 'system.azure.attr_ipaddr');
+bindAzureText('#azureAttrConfig', 'system.azure.attr_config');
+
+$(document).on('change', '#azureGroupFilter', function () {
+  const box = $(this);
+  const enabled = box.prop('checked');
+  request
+    .post('/settings', { 'system.azure.group_filter': enabled })
+    .then((data) => {
+      message.success(data.message);
+    })
+    .catch(() => {
+      box.prop('checked', !enabled);
+    });
 });
 
 $(document).on('focus', '#ldapUrl', function () {

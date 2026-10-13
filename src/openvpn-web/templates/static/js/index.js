@@ -289,7 +289,11 @@ $('#showUser').click(function () {
   initTable('user');
 
   request.get('/settings').then((data) => {
-    if (data.system.ldap.ldap_auth) {
+    if (data.system.azure?.azure_auth) {
+      const toast = $('#alertToast');
+      toast.find('.toast-body').text('已启用Azure认证，本地VPN账号将不再用于登录！');
+      bootstrap.Toast.getOrCreateInstance(toast).show();
+    } else if (data.system.ldap.ldap_auth) {
       const toast = $('#alertToast');
       toast.find('.toast-body').text('已启用LDAP认证，本地VPN账号将不在工作！');
       bootstrap.Toast.getOrCreateInstance(toast).show();
