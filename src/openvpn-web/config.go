@@ -34,6 +34,18 @@ type SysLdapConfig struct {
 	LdapBindPassword       string `json:"ldap_bind_password" mapstructure:"ldap_bind_password"`
 }
 
+type SysAzureConfig struct {
+	AzureAuth     bool   `json:"azure_auth" mapstructure:"azure_auth"`
+	TenantID      string `json:"tenant_id" mapstructure:"tenant_id"`
+	ClientID      string `json:"client_id" mapstructure:"client_id"`
+	ClientSecret  string `json:"client_secret" mapstructure:"client_secret"`
+	UserAttribute string `json:"user_attribute" mapstructure:"user_attribute"`
+	GroupFilter   bool   `json:"group_filter" mapstructure:"group_filter"`
+	GroupID       string `json:"group_id" mapstructure:"group_id"`
+	AttrIpaddr    string `json:"attr_ipaddr" mapstructure:"attr_ipaddr"`
+	AttrConfig    string `json:"attr_config" mapstructure:"attr_config"`
+}
+
 type SysEmailConfig struct {
 	SendSubjectPrefix string  `json:"send_subject_prefix" mapstructure:"send_subject_prefix"`
 	SendFrom          string  `json:"send_from" mapstructure:"send_from"`
@@ -74,6 +86,7 @@ type config struct {
 	System struct {
 		Base  SysBeseConfig  `json:"base" mapstructure:"base"`
 		Ldap  SysLdapConfig  `json:"ldap" mapstructure:"ldap"`
+		Azure SysAzureConfig `json:"azure" mapstructure:"azure"`
 		Email SysEmailConfig `json:"email" mapstructure:"email"`
 	} `json:"system" mapstructure:"system"`
 	Client struct {
@@ -98,6 +111,15 @@ var (
 	ldapUserAttrConfigName string
 	ldapBindUserDn         string
 	ldapBindPassword       string
+	azureAuth              bool
+	azureTenantID          string
+	azureClientID          string
+	azureClientSecret      string
+	azureUserAttribute     string
+	azureGroupFilter       bool
+	azureGroupID           string
+	azureAttrIpaddr        string
+	azureAttrConfig        string
 	nftTableName           string
 
 	ovManage string
@@ -129,6 +151,15 @@ func initConfig() {
 	viper.SetDefault("system.ldap.ldap_user_attr_config_name", "config")
 	viper.SetDefault("system.ldap.ldap_bind_user_dn", "cn=admin,dc=example,dc=org")
 	viper.SetDefault("system.ldap.ldap_bind_password", "adminpassword")
+	viper.SetDefault("system.azure.azure_auth", false)
+	viper.SetDefault("system.azure.tenant_id", "")
+	viper.SetDefault("system.azure.client_id", "")
+	viper.SetDefault("system.azure.client_secret", "")
+	viper.SetDefault("system.azure.user_attribute", "userPrincipalName")
+	viper.SetDefault("system.azure.group_filter", false)
+	viper.SetDefault("system.azure.group_id", "")
+	viper.SetDefault("system.azure.attr_ipaddr", "onPremisesExtensionAttributes.extensionAttribute1")
+	viper.SetDefault("system.azure.attr_config", "onPremisesExtensionAttributes.extensionAttribute2")
 	viper.SetDefault("system.email.send_subject_prefix", "【openvpn-web】")
 	viper.SetDefault("system.email.send_from", "")
 	viper.SetDefault("system.email.host", "")
@@ -231,6 +262,15 @@ func loadConfig() {
 	ldapUserAttrConfigName = conf.System.Ldap.LdapUserAttrConfigName
 	ldapBindUserDn = conf.System.Ldap.LdapBindUserDn
 	ldapBindPassword = conf.System.Ldap.LdapBindPassword
+	azureAuth = conf.System.Azure.AzureAuth
+	azureTenantID = conf.System.Azure.TenantID
+	azureClientID = conf.System.Azure.ClientID
+	azureClientSecret = conf.System.Azure.ClientSecret
+	azureUserAttribute = conf.System.Azure.UserAttribute
+	azureGroupFilter = conf.System.Azure.GroupFilter
+	azureGroupID = conf.System.Azure.GroupID
+	azureAttrIpaddr = conf.System.Azure.AttrIpaddr
+	azureAttrConfig = conf.System.Azure.AttrConfig
 
 	ovManage = conf.Openvpn.OvpnManagement
 }
