@@ -706,12 +706,14 @@ func main() {
 	r.GET("/settings", func(c *gin.Context) {
 		var conf config
 		viper.Unmarshal(&conf)
+		conf.System.Azure.ClientSecret = plainAzureSecret(conf.System.Azure.ClientSecret)
 
 		c.JSON(http.StatusOK, conf)
 	})
 
 	r.POST("/settings", func(c *gin.Context) {
 		c.Request.ParseForm()
+		message := "更新成功"
 		for k, vs := range c.Request.PostForm {
 			val := vs[0]
 
@@ -721,6 +723,39 @@ func main() {
 				val = string(ep)
 			case "system.email.password":
 				val, _ = aes.AesEncrypt(val, secretKey)
+			case "system.azure.client_secret":
+				encrypted, err := aes.AesEncrypt(val, secretKey)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
+				val = encrypted
+			case "system.azure.user_attribute":
+				if val != "userPrincipalName" && val != "mail" {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": "用户属性只允许 userPrincipalName 或 mail"})
+					return
+				}
+			case "system.azure.azure_auth":
+				if val == "true" {
+					if viper.GetString("system.azure.tenant_id") == "" || viper.GetString("system.azure.client_id") == "" || viper.GetString("system.azure.client_secret") == "" {
+						c.JSON(http.StatusInternalServerError, gin.H{"message": "请先填写租户 ID、应用程序 ID 和客户端机密"})
+						return
+					}
+					if viper.GetBool("system.ldap.ldap_auth") {
+						viper.Set("system.ldap.ldap_auth", false)
+						message = "更新成功，已关闭 LDAP 认证"
+					}
+				}
+			case "system.azure.group_filter":
+				if val == "true" && viper.GetString("system.azure.group_id") == "" {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": "请先填写组 ID"})
+					return
+				}
+			case "system.ldap.ldap_auth":
+				if val == "true" && viper.GetBool("system.azure.azure_auth") {
+					viper.Set("system.azure.azure_auth", false)
+					message = "更新成功，已关闭 Azure 认证"
+				}
 			case "system.base.max_duplicate_login":
 				n, err := strconv.Atoi(val)
 				if err != nil {
@@ -770,7 +805,7 @@ func main() {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "更新成功"})
+		c.JSON(http.StatusOK, gin.H{"message": message})
 	})
 
 	r.POST("/email/send", func(c *gin.Context) {
@@ -1572,6 +1607,16 @@ func main() {
 				u.Username = user
 			}
 
+			if azureAuth {
+				au, err := (&AzureConn{}).Get(u.Username)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
+				c.JSON(http.StatusOK, au)
+				return
+			}
+
 			if ldapAuth {
 				l, err := InitLdap()
 				if err != nil {
@@ -1595,6 +1640,11 @@ func main() {
 		client.POST("/modifyPass", func(c *gin.Context) {
 			var u User
 			c.ShouldBind(&u)
+
+			if azureAuth {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "Azure用户不支持修改密码"})
+				return
+			}
 
 			session := sessions.Default(c)
 			if user, ok := session.Get("user").(string); ok {
@@ -1650,6 +1700,15 @@ func main() {
 
 			u = u.Info()
 			configName := u.OvpnConfig
+
+			if azureAuth {
+				au, err := (&AzureConn{}).Get(u.Username)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
+				configName = au.OvpnConfig
+			}
 
 			if ldapAuth {
 				l, err := InitLdap()
@@ -1728,6 +1787,10 @@ func main() {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": "LDAP用户不支持设置MFA"})
 				return
 			}
+			if azureAuth {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "Azure用户不支持设置MFA"})
+				return
+			}
 
 			var u User
 
@@ -1751,6 +1814,11 @@ func main() {
 		})
 
 		client.POST("/mfa", func(c *gin.Context) {
+			if azureAuth {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "Azure用户不支持设置MFA"})
+				return
+			}
+
 			var u User
 			c.ShouldBind(&u)
 
@@ -1775,6 +1843,11 @@ func main() {
 		})
 
 		client.DELETE("/mfa/:id", func(c *gin.Context) {
+			if azureAuth {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "Azure用户不支持设置MFA"})
+				return
+			}
+
 			var u User
 			c.ShouldBindUri(&u)
 
