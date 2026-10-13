@@ -149,7 +149,9 @@ func (u *User) Login(clogin bool) error {
 		}
 	}
 
-	if ldapAuth {
+	if azureAuth {
+		return (&AzureConn{}).Auth(clogin, user, pass, commonName)
+	} else if ldapAuth {
 		l, err := InitLdap()
 		if err != nil {
 			return err
