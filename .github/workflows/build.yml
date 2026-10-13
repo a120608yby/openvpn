@@ -45,7 +45,7 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: ./build
+          context: .
           file: ./build/Dockerfile
           push: true
           platforms: |
@@ -56,6 +56,8 @@ jobs:
 
           build-args: |
             VERSION=${{ env.VERSION }}
+            ALPINE_MIRROR=dl-cdn.alpinelinux.org
+            GOPROXY=https://proxy.golang.org,direct
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/openvpn:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/openvpn:${{ env.VERSION }}

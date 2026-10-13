@@ -20,7 +20,7 @@ go build ./...
 
 `OVPN_DATA` 必填且可写。未设置或目录无效时，`init()` 里的 `initConfig()` 会 panic。没有单元测试，不要运行或报告 `go test`。
 
-容器编排用仓库根目录的 `docker compose up -d`。`build/Dockerfile` 从 GitHub Releases 下载 `openvpn-web`，不编译当前源码。本地改动用 `go build` 验证。
+容器编排用仓库根目录的 `docker compose up -d`。`docker-compose.yml` 设置 `pull_policy: build`，构建上下文是仓库根目录，Dockerfile 是 `build/Dockerfile`，在本地构建 `yyxx/openvpn`，不拉取远程同名镜像。镜像编译 `src/openvpn-web`。Go 模块默认走腾讯云 `https://mirrors.cloud.tencent.com/go`，Alpine 软件源默认是 `mirrors.cloud.tencent.com`。发布工作流用 `GOPROXY=https://proxy.golang.org,direct` 和 `ALPINE_MIRROR=dl-cdn.alpinelinux.org`。Easy-RSA 仍从 GitHub Releases 下载。构建时去掉入口脚本和 `supervisord.conf` 的 CR，避免 Windows CRLF 检出导致容器启动失败。本地快速验证用 `go build`。根目录 `.dockerignore` 排除 `pkg/` 和 `data/`。
 
 发布靠推送 git tag。`.github/workflows/build.yml` 用 GoReleaser 出二进制，再构建多架构镜像。
 
@@ -47,7 +47,7 @@ go build ./...
 - 配置用 Viper 写 `config.json`。仅当 `system.base.auto_update_ovpn_config` 为真时，`upadteOvpnConfig()` 才改 `server.conf`。改完仍需手动重启 OpenVPN。
 - LDAP 开启后，本地 VPN 账号不再用于认证。
 - `system.azure.azure_auth` 为真时，普通用户登录和拨入走 `azure.go`（Graph 查用户，令牌接口验口令）。与 LDAP 互斥。管理员仍是本地账号。客户端机密 AES 存储。MFA 或条件访问账号不能用用户名密码登录。
-- 防火墙规则落到 nftables，默认表名 `openvpn-nft`。分组访问权限另外写在同一张表的 `access` 链，字段是 `access_clients`、`access_subnets`、`access_rules`。
+- 防火墙规则落到 nftables，默认表名 `openvpn-nft`。分组访问权限另外写在同一张表的 `access` 链，字段是 `access_clients`、`access_subnets`、`access_rules`。LDAP 或 Azure 认证的用户如果本地没有同名 VPN 账号，不会套用这套规则。
 - OpenVPN 2.6 没有内置包过滤。不要加 `minimal_pf.so`。访问权限在 `learn-address` 时随 `/ovpn/firewall?a=add_ovips` 下发，断开时删除。空策略表示继承上级，根上仍为空则全部放行。
 - 入口脚本会注释 `client-to-client` 并打开 IP 转发，VPN 网段之间不走 MASQUERADE，客户端互访才会经过防火墙。
 

@@ -66,7 +66,7 @@ script-security 3
 status $OVPN_DATA/openvpn-status.log
 client-config-dir $OVPN_DATA/ccd
 duplicate-cn
-client-to-client
+# 客户端互访改走本机转发，访问权限才能在防火墙上生效。不要启用 client-to-client。
 max-clients $OVPN_MAXCLIENTS
 management ${OVPN_MANAGEMENT/:/ }
 verb 2
@@ -91,15 +91,25 @@ run_server() {
 
 	config=$OVPN_DATA/server.conf
 
+	echo 1 >/proc/sys/net/ipv4/ip_forward 2>/dev/null || true
 	ovpn_subnet=$(awk '$1=="server"{print $2, $3}' $config)
-	$ipt -t nat -C POSTROUTING -s ${ovpn_subnet/ /\/} -j MASQUERADE >/dev/null 2>&1 || {
-		$ipt -t nat -A POSTROUTING -s ${ovpn_subnet/ /\/} -j MASQUERADE
+	sn=${ovpn_subnet/ /\/}
+	while $ipt -t nat -C POSTROUTING -s "$sn" -j MASQUERADE >/dev/null 2>&1; do
+		$ipt -t nat -D POSTROUTING -s "$sn" -j MASQUERADE
+	done
+	$ipt -t nat -C POSTROUTING -s "$sn" ! -d "$sn" -j MASQUERADE >/dev/null 2>&1 || {
+		$ipt -t nat -A POSTROUTING -s "$sn" ! -d "$sn" -j MASQUERADE
 	}
 
 	if jq -e '.openvpn.ovpn_ipv6' $SYSTEM_CONFIG >/dev/null 2>&1; then
-		ovpn_subnet6=$(awk '$1=="server-ipv6"{print $2, $3}' $config)
-		${ipt/iptables/ip6tables} -t nat -C POSTROUTING -s $ovpn_subnet6 -j MASQUERADE >/dev/null 2>&1 || {
-			${ipt/iptables/ip6tables} -t nat -A POSTROUTING -s $ovpn_subnet6 -j MASQUERADE
+		echo 1 >/proc/sys/net/ipv6/conf/all/forwarding 2>/dev/null || true
+		ovpn_subnet6=$(awk '$1=="server-ipv6"{print $2}' $config)
+		ip6t=${ipt/iptables/ip6tables}
+		while $ip6t -t nat -C POSTROUTING -s "$ovpn_subnet6" -j MASQUERADE >/dev/null 2>&1; do
+			$ip6t -t nat -D POSTROUTING -s "$ovpn_subnet6" -j MASQUERADE
+		done
+		$ip6t -t nat -C POSTROUTING -s "$ovpn_subnet6" ! -d "$ovpn_subnet6" -j MASQUERADE >/dev/null 2>&1 || {
+			$ip6t -t nat -A POSTROUTING -s "$ovpn_subnet6" ! -d "$ovpn_subnet6" -j MASQUERADE
 		}
 	fi
 
@@ -202,6 +212,7 @@ check_config() {
 	grep -q "^client-connect" $config || echo "client-connect /usr/bin/docker-entrypoint.sh" >>$config
 	grep -q "^client-disconnect" $config || echo "client-disconnect /usr/bin/docker-entrypoint.sh" >>$config
 	grep -q "^learn-address" $config || echo "learn-address /usr/bin/docker-entrypoint.sh" >>$config
+	sed -i 's/^client-to-client$/#client-to-client/' "$config"
 }
 
 add_history() {
@@ -256,10 +267,14 @@ table inet $TABLE {
 		type ipv6_addr
 	}
 
+	chain access {
+	}
+
 	chain forward {
 		type filter hook forward priority filter; policy accept;
 		ip saddr @blacklist_v4 drop
 		ip6 saddr @blacklist_v6 drop
+		jump access comment "access_jump"
 	}
 
 	chain upload {

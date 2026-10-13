@@ -50,7 +50,7 @@ go build -o openvpn-web.exe .
 docker compose up -d
 ```
 
-`build/Dockerfile` 的构建上下文是 `build/`。它从 GitHub Releases 下载已发布的 `openvpn-web`，不会编译当前 Go 源码。验证本地 Go 改动用 `go build` / `go run`，不要只用这条镜像构建判断源码是否通过。
+`docker compose up -d` 使用仓库根目录的 `docker-compose.yml`：`pull_policy: build`，构建上下文是仓库根目录，Dockerfile 是 `build/Dockerfile`，结果标记为 `yyxx/openvpn`，不拉取远程同名镜像。镜像在构建阶段编译 `src/openvpn-web`（`CGO_ENABLED=0`）。Go 模块默认走腾讯云 `https://mirrors.cloud.tencent.com/go`，Alpine 软件源默认是 `mirrors.cloud.tencent.com`。`.github/workflows/build.yml` 用 `GOPROXY=https://proxy.golang.org,direct` 和 `ALPINE_MIRROR=dl-cdn.alpinelinux.org` 改回官方源。Easy-RSA 仍从 GitHub Releases 下载。构建时会去掉 `docker-entrypoint.sh`、`openvpn-auth`、`supervisord.conf` 的 CR，避免 Windows 的 CRLF 检出让入口脚本无法执行。本地快速验证用 `go build` / `go run`。根目录 `.dockerignore` 要排除 `pkg/`、`data/`，避免把模块缓存和运行时数据送进构建上下文。
 
 发布：推送 git tag。`.github/workflows/build.yml` 在 `src/openvpn-web` 跑 GoReleaser，再构建 `linux/amd64`、`linux/arm64`、`linux/arm/v6`、`linux/arm/v7` 并推送镜像。
 
@@ -105,7 +105,7 @@ docker compose up -d
 - 管理员口令用 bcrypt。VPN 账号口令用 `secretKey` 做 AES。邮件口令同样 AES。不要改成明文存储。
 - `gin.Recovery()` 目前被注释掉。不要无说明地打开或删掉这行。
 - `build/docker-entrypoint.sh` 读取 `.openvpn.ovpn_maxclients`，Go 配置字段是 `ovpn_max_clients`。改最大客户端数时两边一起核对。
-- 分组访问权限存在 `group.access_clients`、`access_subnets`、`access_rules`。空值表示继承上级，根上仍为空则客户端互访和网段都放行。例外行以 `+` 放行、以 `-` 拒绝，本节点规则先于上级匹配。
+- 分组访问权限存在 `group.access_clients`、`access_subnets`、`access_rules`。空值表示继承上级，根上仍为空则客户端互访和网段都放行。例外行以 `+` 放行、以 `-` 拒绝，本节点规则先于上级匹配。LDAP 或 Azure 认证的用户如果本地没有同名 VPN 账号，不会套用这套规则。
 - OpenVPN 2.6 没有内置包过滤，不要加回 `minimal_pf.so` 或 `pf_file`。访问权限在客户端 `learn-address` 时经 `/ovpn/firewall?a=add_ovips` 写入 nftables 表 `access` 链；断开时删除。放行用 `return`，这样已有防火墙规则仍能拒绝。
 - 启动 OpenVPN 时注释 `server.conf` 的 `client-to-client`，并打开 IP 转发。VPN 网段内部转发不做 MASQUERADE。否则客户端互访不经过防火墙，访问权限管不到。
 

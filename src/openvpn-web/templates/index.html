@@ -2042,6 +2042,9 @@
       <a class="dropdown-item" role="button" id="menuVpnConfig">
         <i class="fab fa-jxl me-2 text-primary"></i>VPN配置
       </a>
+      <a class="dropdown-item" role="button" id="menuAccess">
+        <i class="fas fa-lock me-2 text-primary"></i>访问权限
+      </a>
       <a class="dropdown-item" role="button" id="menuExport">
         <i class="fas fa-download me-2 text-primary"></i>导出账号
       </a>
@@ -2074,6 +2077,59 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
             <button type="submit" class="btn btn-primary" id="treeVpnConfigSumbit">确认</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="modal fade"
+      data-bs-backdrop="static"
+      data-bs-keyboard="false"
+      tabindex="-1"
+      id="treeAccessModal"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">访问权限（应用到节点下所有账号）</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">客户端互访</label>
+              <select class="form-select form-select-sm" name="accessClients">
+                <option value="">跟随上级（未设置则放行）</option>
+                <option value="ACCEPT">允许</option>
+                <option value="DROP">拒绝</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">网段默认</label>
+              <select class="form-select form-select-sm" name="accessSubnets">
+                <option value="">跟随上级（未设置则放行）</option>
+                <option value="ACCEPT">允许</option>
+                <option value="DROP">拒绝</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">网段例外</label>
+              <textarea
+                class="form-control form-control-sm"
+                name="accessRules"
+                rows="8"
+                placeholder="+192.168.10.0/24&#10;-192.168.20.0/24"
+              ></textarea>
+            </div>
+            <p class="text-muted small mb-0">
+              一行一条，+ 放行，- 拒绝，先写到的先生效。本节点规则写在上级例外之前。未配置时全部放行。保存后在线客户端会立即更新，失败则重连后生效。拒绝互访时，VPN
+              服务器自己的地址仍然放行。客户端互访依赖本机转发，重启 OpenVPN 后 server.conf 里的 client-to-client 会被注释掉。
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+            <button type="submit" class="btn btn-primary" id="treeAccessSumbit">确认</button>
           </div>
         </div>
       </div>

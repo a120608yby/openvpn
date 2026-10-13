@@ -1,0 +1,12 @@
+.git
+.github
+.idea
+.vscode
+data
+pkg
+doc
+scripts
+**/*.exe
+**/ovpn.db
+**/config.json
+**/pki

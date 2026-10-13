@@ -9,13 +9,16 @@ import (
 )
 
 type Group struct {
-	ID        uint      `gorm:"primarykey" json:"id" form:"id"`
-	Name      string    `json:"name" form:"name"`
-	ParentID  *uint     `json:"parent_id" form:"parent_id"`
-	Config    *string   `json:"config" form:"config"`
-	Users     []User    `gorm:"foreignKey:Gid;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	CreatedAt time.Time `json:"createdAt" form:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt" form:"updatedAt"`
+	ID            uint      `gorm:"primarykey" json:"id" form:"id"`
+	Name          string    `json:"name" form:"name"`
+	ParentID      *uint     `json:"parent_id" form:"parent_id"`
+	Config        *string   `json:"config" form:"config"`
+	AccessClients *string   `json:"access_clients" form:"access_clients"`
+	AccessSubnets *string   `json:"access_subnets" form:"access_subnets"`
+	AccessRules   *string   `json:"access_rules" form:"access_rules"`
+	Users         []User    `gorm:"foreignKey:Gid;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	CreatedAt     time.Time `json:"createdAt" form:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt" form:"updatedAt"`
 }
 
 func (g *Group) BeforeCreate(tx *gorm.DB) (err error) {

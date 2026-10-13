@@ -756,6 +756,7 @@ const menuEdit = document.getElementById('menuEdit');
 const menuExport = document.getElementById('menuExport');
 const menuDelete = document.getElementById('menuDelete');
 const menuVpnConfig = document.getElementById('menuVpnConfig');
+const menuAccess = document.getElementById('menuAccess');
 
 function handleContextMenu(e, node) {
   currentNode = node;
@@ -841,6 +842,16 @@ menuVpnConfig.addEventListener('click', () => {
   });
 });
 
+menuAccess.addEventListener('click', () => {
+  contextMenu.style.display = 'none';
+  request.get(`/ovpn/group/${currentNode.id}`).then((data) => {
+    $('#treeAccessModal select[name="accessClients"]').val(data.access_clients || '');
+    $('#treeAccessModal select[name="accessSubnets"]').val(data.access_subnets || '');
+    $('#treeAccessModal textarea[name="accessRules"]').val(data.access_rules || '');
+    $('#treeAccessModal').modal('show');
+  });
+});
+
 menuDelete.addEventListener('click', () => {
   contextMenu.style.display = 'none';
   setTimeout(() => {
@@ -879,6 +890,16 @@ $('#treeVpnConfigSumbit').click(function () {
     $('#treeVpnConfigModal textarea[name="config"]').val('');
     $('#treeVpnConfigModal').modal('hide');
     message.success('设置VPN配置成功');
+  });
+});
+
+$('#treeAccessSumbit').click(function () {
+  const access_clients = $('#treeAccessModal select[name="accessClients"]').val();
+  const access_subnets = $('#treeAccessModal select[name="accessSubnets"]').val();
+  const access_rules = $('#treeAccessModal textarea[name="accessRules"]').val().trim();
+  request.patch('/ovpn/group', { id: currentNode.id, access_clients, access_subnets, access_rules }).then((data) => {
+    $('#treeAccessModal').modal('hide');
+    message.success(data?.message || '设置访问权限成功');
   });
 });
 

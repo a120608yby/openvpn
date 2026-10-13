@@ -1,6 +1,10 @@
 services:
   openvpn:
     image: yyxx/openvpn
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: build/Dockerfile
     cap_add:
       - NET_ADMIN
     ports:

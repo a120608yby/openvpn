@@ -985,10 +985,32 @@ func main() {
 				}
 			}
 
+			_, accessPosted := c.Request.PostForm["access_clients"]
+			if !accessPosted {
+				_, accessPosted = c.Request.PostForm["access_subnets"]
+			}
+			if !accessPosted {
+				_, accessPosted = c.Request.PostForm["access_rules"]
+			}
+			if accessPosted {
+				if err := saveGroupAccess(&g, c); err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+					return
+				}
+			}
+
 			err := g.Update()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
+			}
+
+			if accessPosted {
+				if err := syncGroupAccess(strconv.FormatUint(uint64(g.ID), 10)); err != nil {
+					logger.Error(context.Background(), err.Error())
+					c.JSON(http.StatusOK, gin.H{"message": "访问权限已保存，在线客户端未刷新，重连后生效"})
+					return
+				}
 			}
 
 			c.JSON(http.StatusOK, gin.H{"message": "更新成功"})
@@ -997,11 +1019,19 @@ func main() {
 		ovpn.DELETE("/group/:id", func(c *gin.Context) {
 			var g Group
 			c.ShouldBind(&g)
+			gid := c.Param("id")
+			users := g.GetUsers(gid)
 
-			err := g.Delete(c.Param("id"))
+			err := g.Delete(gid)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
+			}
+
+			for _, user := range users {
+				if err := clearAccessUser(user.ID); err != nil {
+					logger.Error(context.Background(), err.Error())
+				}
 			}
 
 			c.JSON(http.StatusOK, gin.H{"message": "删除成功"})
@@ -1240,6 +1270,12 @@ func main() {
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			} else {
+				var cu User
+				if err := db.First(&cu, u.ID).Error; err == nil {
+					if err := syncOnlineAccess(map[string]struct{}{cu.Username: {}}); err != nil {
+						logger.Error(context.Background(), err.Error())
+					}
+				}
 				sendNotifyEmail := c.PostForm("sendNotifyEmail")
 				if sendNotifyEmail == "true" {
 					go func() {
@@ -1286,11 +1322,16 @@ func main() {
 		ovpn.DELETE("/user/:id", func(c *gin.Context) {
 			var u User
 			id := c.Param("id")
+			db.First(&u, id)
+			userID := u.ID
 
 			err := u.Delete(id)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			} else {
+				if err := clearAccessUser(userID); err != nil {
+					logger.Error(context.Background(), err.Error())
+				}
 				c.JSON(http.StatusOK, gin.H{"message": "删除用户成功"})
 			}
 		})

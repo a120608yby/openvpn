@@ -688,6 +688,12 @@ func FirewallHandler(c *gin.Context) {
 				}
 			}
 
+			if err := applyUserAccess(username, vip, vip6); err != nil {
+				logger.Error(context.Background(), err.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "设置访问权限失败"})
+				return
+			}
+
 			if err := saveNftConfig(); err != nil {
 				logger.Error(context.Background(), err.Error())
 				c.JSON(http.StatusInternalServerError, gin.H{"message": "保存防火墙配置失败"})
@@ -708,6 +714,12 @@ func FirewallHandler(c *gin.Context) {
 					c.JSON(http.StatusInternalServerError, gin.H{"message": "移除防火墙策略失败"})
 					return
 				}
+			}
+
+			if err := clearUserAccessSession(username, vip, vip6); err != nil {
+				logger.Error(context.Background(), err.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "移除访问权限失败"})
+				return
 			}
 
 			if err := saveNftConfig(); err != nil {
