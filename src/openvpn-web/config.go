@@ -265,7 +265,7 @@ func loadConfig() {
 	azureAuth = conf.System.Azure.AzureAuth
 	azureTenantID = conf.System.Azure.TenantID
 	azureClientID = conf.System.Azure.ClientID
-	azureClientSecret = conf.System.Azure.ClientSecret
+	azureClientSecret = plainAzureSecret(conf.System.Azure.ClientSecret)
 	azureUserAttribute = conf.System.Azure.UserAttribute
 	azureGroupFilter = conf.System.Azure.GroupFilter
 	azureGroupID = conf.System.Azure.GroupID
